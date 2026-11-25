@@ -2,7 +2,7 @@
 "use strict";
 const $ = (s) => document.querySelector(s);
 const U = 1e6, CH = { 4217: "Tempo", 8453: "Base" }, TOK = { 4217: "OUSD", 8453: "USDC" };
-const C = { base: "#2BB5A6", up: "#4ADE80", pink: "#E63F78", pink2: "#FF8FB5", deep: "#A8245A", cream: "#EFE9E2", paper: "#FFF6E8", sage: "#9FB49A", ash: "#6b6058", mu: "#B0A79D", line: "#453E37" };
+const C = { fade: "rgba(13,12,10,.22)", base: "#2BB5A6", up: "#4ADE80", pink: "#E63F78", pink2: "#FF8FB5", deep: "#A8245A", cream: "#EFE9E2", paper: "#FFF6E8", sage: "#9FB49A", ash: "#6b6058", mu: "#B0A79D", line: "#453E37" };
 const fmt = (n, d = 0) => Number(n).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 const money = (b) => { const v = b / U; return v >= 100 ? fmt(v) : v >= 1 ? fmt(v, 1) : fmt(v, 2); };
 const usd = (b) => "$" + money(b);
@@ -52,7 +52,7 @@ function sq(x, y, z) { X.beginPath(); X.roundRect(x - z, y - z, 2 * z, 2 * z, z 
 function frame(now) {
   if (!M) return requestAnimationFrame(frame);
   const lay = layout();
-  X.fillStyle = "rgba(13,12,10,.22)"; X.fillRect(0, 0, W, H);
+  X.fillStyle = C.fade; X.fillRect(0, 0, W, H);
   for (const f of lay.fl) {
     const a = node(lay, "L", f.from), b = node(lay, "R", f.to); if (!a || !b) continue;
     const ya = a.y + a.h / 2, yb = b.y + b.h / 2, m = (a.x + b.x) / 2;
@@ -75,7 +75,7 @@ function frame(now) {
     const x = bz(e, x0, m, m, x1), y = bz(e, ya, ya, yb, yb) - Math.sin(Math.PI * e) * 30;
     X.shadowColor = C.pink; X.shadowBlur = 26; X.fillStyle = C.pink; sq(x, y, 11); X.shadowBlur = 0; X.fillStyle = C.paper; sq(x, y, 4.5);
     X.font = "11px DM"; const tw = Math.max(X.measureText(c.tag).width, 90) / 2 + 8, lx = Math.max(tw, Math.min(W - tw, x));
-    X.font = "600 14px IT"; X.textAlign = "center"; X.fillStyle = C.paper; X.fillText("+" + money(c.amount) + " " + TOK[c.chainId], lx, y - 20);
+    X.font = "600 14px IT"; X.textAlign = "center"; X.fillStyle = C.cream; X.fillText("+" + money(c.amount) + " " + TOK[c.chainId], lx, y - 20);
     X.font = "11px DM"; X.fillStyle = C.mu; X.fillText(c.tag, lx, y + 28);
     if (c.p >= 1 && !c.done) { c.done = 1; landed++; nudgePaid(c); for (let i = 0; i < 3; i++) pops.push({ x: x1, y: yb, r: 4 + i * 8, c: C.pink, a: 1 }); }
   }
@@ -198,7 +198,7 @@ function insights() {
   const diedN = v.diedTasks, paidN = v.paidTasks, mx = Math.max(diedN, paidN, 1);
   $("#vis4").innerHTML = [
     `<div class="card vi" tabindex="0" data-tip="Top 3 posters (${VNAME()}):\n${esc(top)}\nof ${fmt(v.taskCount)} tasks"><div class="ring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="${R}"/><circle class="fg" cx="60" cy="60" r="${R}" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}" data-off="${CIRC * (1 - v.top3Share / 100)}"/></svg><div class="big">${num("v-conc", v.top3Share, "pct0")}</div></div><div class="c">of tasks come from 3 posters</div></div>`,
-    `<div class="card vi" tabindex="0" data-tip="Rewards posted (${UNIT()}): ${amtTxt(all)}\nPaid ${amtTxt(paid)} · open ${amtTxt(open)} · expired or refunded ${amtTxt(died)}"><div class="big p">${num("v-paid", (100 * paid) / all, "pct0")}</div><div class="stack"><i data-w="${(100 * paid) / all}" style="background:${C.pink}"></i><i data-w="${(100 * open) / all}" style="background:${C.sage}"></i><i data-w="${(100 * died) / all}" style="background:${C.ash}"></i></div><div class="legend"><span><i class="dot t"></i>paid</span><span><i class="dot" style="background:${C.sage}"></i>open</span><span><i class="dot" style="background:${C.ash}"></i>died</span></div><div class="c">of rewards paid out</div></div>`,
+    `<div class="card vi" tabindex="0" data-tip="Rewards posted (${UNIT()}): ${amtTxt(all)}\nPaid ${amtTxt(paid)} · open ${amtTxt(open)} · expired or refunded ${amtTxt(died)}"><div class="big p">${num("v-paid", (100 * paid) / all, "pct0")}</div><div class="stack"><i data-w="${(100 * paid) / all}" style="background:${C.pink}"></i><i data-w="${(100 * open) / all}" style="background:${C.sage}"></i><i data-w="${(100 * died) / all}" style="background:${C.ash}"></i></div><div class="legend"><span><i class="dot" style="background:${C.pink}"></i>paid</span><span><i class="dot" style="background:${C.sage}"></i>open</span><span><i class="dot" style="background:${C.ash}"></i>died</span></div><div class="c">of rewards paid out</div></div>`,
     `<div class="card vi med" tabindex="0" data-tip="Median hours from posting to payout over the last ${mp.n} payouts seen (${VNAME()})."><div class="big">${med != null ? num("v-med", med, "h") : "–"}<span class="u">hours</span></div><div class="day"><div class="trk"><i class="tl" data-w="${med != null ? Math.min(100, (100 * med) / 24) : 0}"></i></div><div class="ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24h</span></div></div><div class="c">${med != null ? "median time to payout" : "too few recent payouts on " + VNAME() + " to say"}</div></div>`,
     `<div class="card vi" tabindex="0" data-tip="Tasks that expired or were cancelled without a winner, vs tasks paid out (${VNAME()})."><div class="dvp"><div class="col"><div class="vs1"><div class="vb" data-h="${(100 * diedN) / mx}" style="background:${C.ash}"></div></div><div class="n">${num("v-died", diedN)}</div><div class="c">died without a winner</div></div><div class="col"><div class="vs1"><div class="vb" data-h="${(100 * paidN) / mx}" style="background:${C.pink}"></div></div><div class="n p">${num("v-paidn", paidN)}</div><div class="c">paid out</div></div></div></div>`,
   ].join("");
@@ -217,7 +217,7 @@ function paths(ys) { const d = "M" + ys.map((y, i) => ((i * 300) / (NPT - 1)).to
 function charts() {
   const ser = (k) => (k === "activeAgents" ? M.series : EX().series)[range], s = ser("tasksCreated"), lab = s.map((r) => r.bucket.slice(5)), box = $("#charts");
   if (!box.dataset.init) {
-    box.innerHTML = CK.map(([k, t]) => `<div class="card chart" data-k="${k}"><div class="k">${t}</div><div class="v"></div><svg viewBox="0 0 300 100" preserveAspectRatio="none"><path class="ar" fill="rgba(230,63,120,.14)"/><path class="ln" pathLength="1" fill="none" stroke="${C.pink}" stroke-width="2"/><path class="shm" pathLength="1" fill="none" stroke="${C.paper}" stroke-width="3" stroke-linecap="round"/></svg><div class="axis"><span class="a0"></span><span class="a1"></span></div><div class="tip"></div></div>`).join("");
+    box.innerHTML = CK.map(([k, t]) => `<div class="card chart" data-k="${k}"><div class="k">${t}</div><div class="v"></div><svg viewBox="0 0 300 100" preserveAspectRatio="none"><path class="ar" fill="${C.pink}" fill-opacity=".14"/><path class="ln" pathLength="1" fill="none" stroke="${C.pink}" stroke-width="2"/><path class="shm" pathLength="1" fill="none" stroke="${C.paper}" stroke-width="3" stroke-linecap="round"/></svg><div class="axis"><span class="a0"></span><span class="a1"></span></div><div class="tip"></div></div>`).join("");
     box.dataset.init = 1;
     box.querySelectorAll(".chart").forEach((el) => el.querySelector("svg").addEventListener("pointermove", (e) => {
       const k = el.dataset.k, ss = (k === "activeAgents" ? M.series : EX().series)[range], f = k.endsWith("Volume") ? amtTxt : fmt, r = e.currentTarget.getBoundingClientRect();
@@ -505,3 +505,33 @@ function chainBlockA(x) { document.getElementById("small4").className = "small4 
     return `<div class="cbrow"><div class="cbl">${label}<b>${num("cba" + k + x.view, tot)}</b></div><div class="cbbar">${cs.map((c) => { const pc = (100 * st[c][k]) / tot, ok = cs.length === 1 || pc >= 16; return `<i class="${c === "4217" ? "t" : "b"}" data-w="${Math.max(6, pc)}" title="${CH[c]}: ${fmt(st[c][k])}">${ok ? `${fmt(st[c][k])}<em>${CH[c]} · ${fmt(pc)}%</em>` : ""}</i>`; }).join("")}</div>${cs.some((c) => cs.length > 1 && (100 * st[c][k]) / tot < 16) ? `<div class="cbnote">${cs.map((c) => `<span>${(100 * st[c][k]) / tot < 16 ? `${CH[c]} <b>${fmt(st[c][k])}</b> · ${fmt((100 * st[c][k]) / tot)}%` : ""}</span>`).join("")}</div>` : ""}</div>`; };
   return row("paid", "Workers ever paid") + row("wallets", "Active wallets") + row("tasks", "Tasks posted · 30d") +
     `<div class="cbfoot"><span>Registered workers (platform-wide) <b style="color:var(--cream)">${num("cbareg", st[cs[0]].reg)}</b></span><span><i class="dot t"></i>Tempo <i class="dot b" style="margin-left:10px"></i>Base</span></div>`; }
+
+/* ---------------- dark / light theme ---------------- */
+const THEMES = {
+  dark: { fade: "rgba(13,12,10,.22)", base: "#2BB5A6", up: "#4ADE80", pink: "#E63F78", pink2: "#FF8FB5", deep: "#A8245A", cream: "#EFE9E2", paper: "#FFF6E8", sage: "#9FB49A", ash: "#6b6058", mu: "#B0A79D", line: "#453E37",
+    MC: { bounty: "#E63F78", claim: "#FF8FB5", pitch: "#A8245A", benchmark: "#D9A097", auction: "#FFF6E8" },
+    SC: { completed: "#E63F78", open: "#9FB49A", claimed: "#FF8FB5", worker_selected: "#D9A097", pending_approval: "#FFF6E8", cancelled: "#6b6058", expired: "#4a423b" },
+    TCOL: ["#E63F78", "#FF8FB5", "#A8245A", "#D9A097", "#C76B98", "#9FB49A", "#5c5650"] },
+  light: { fade: "rgba(255,248,249,.3)", base: "#0F8F82", up: "#16A34A", pink: "#9D2B54", pink2: "#C2456F", deep: "#7A1E40", cream: "#2A1A20", paper: "#FFFFFF", sage: "#6E9268", ash: "#B4A2A8", mu: "#6E5A61", line: "#EED5DC",
+    MC: { bounty: "#9D2B54", claim: "#C2456F", pitch: "#E8A3B8", benchmark: "#6E5A61", auction: "#D9C2C9" },
+    SC: { completed: "#9D2B54", open: "#6E9268", claimed: "#C2456F", worker_selected: "#6E5A61", pending_approval: "#E8C9D2", cancelled: "#B4A2A8", expired: "#8A747B" },
+    TCOL: ["#9D2B54", "#0F8F82", "#C2456F", "#6E9268", "#6E5A61", "#E8A3B8", "#D9C2C9"] },
+};
+function applyThemeColors(t) {
+  const th = THEMES[t] || THEMES.dark;
+  for (const [k, v] of Object.entries(th)) if (typeof v === "string") C[k] = v;
+  Object.assign(MC, th.MC); Object.assign(SC, th.SC); TCOL.splice(0, TCOL.length, ...th.TCOL);
+  OC.paid = C.pink; OC.open = C.sage; OC.died = C.ash; OUTS[0][2] = C.pink; OUTS[1][2] = C.sage; OUTS[2][2] = C.ash;
+}
+function setTheme(t, save) {
+  const root = document.documentElement, btn = $("#themebtn");
+  root.classList.add("theme-anim"); setTimeout(() => root.classList.remove("theme-anim"), 400);
+  if (t === "light") root.dataset.theme = "light"; else delete root.dataset.theme;
+  if (save) { try { localStorage.setItem("tm-theme", t); } catch (e) {} }
+  applyThemeColors(t);
+  if (btn) { btn.setAttribute("aria-label", t === "light" ? "Switch to dark theme" : "Switch to light theme"); btn.setAttribute("aria-pressed", t === "light"); btn.dataset.mode = t; }
+  if (M) { const cb = $("#charts"); cb.dataset.init = ""; cb.innerHTML = ""; document.querySelectorAll("#modes, #statuses").forEach((e) => (e.dataset.sig = "")); P = []; renderAll(); }
+}
+{ let t = "dark"; try { t = localStorage.getItem("tm-theme") === "light" ? "light" : "dark"; } catch (e) {}
+  setTheme(t, false);
+  const b = $("#themebtn"); if (b) b.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light", true)); }
