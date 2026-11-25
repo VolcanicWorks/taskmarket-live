@@ -31,6 +31,9 @@ The page shows
 5. **Live API reconcile** (fresh calls): open now = `/api/market/stats` openTasks; every status total =
    `/api/stats/breakdowns`; payouts per day and tasks + rewards posted per day for the last 30 full days =
    `/api/stats/platform-time-series`; 5 random tasks' entry counts = `/api/tasks/{id}` and `/api/task-stories`.
+   Rejected entries in task-stories are left out (Taskmarket's count leaves them out too). Three known source limits are a
+   WARN, never a FAIL, and only after one refetch: task-stories stops at 500 submissions per task, it returns an empty
+   list for some finished tasks, and a count can move while the data is read. Any other mismatch is a FAIL.
 
 Result: PASS, WARN or FAIL per check. Any FAIL blocks publishing. The one known WARN: the API's breakdown counts a few
 open / worker-selected tasks that never appear in any public task list (probably private tasks), so they cannot be shown.

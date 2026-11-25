@@ -104,15 +104,34 @@ if (!NOAPI) {
       dc.length ? `${dc.length} day(s) differ: ${dc.slice(0, 3).map((x) => `${x[0]} +${x[1]} tasks`).join("; ")} (API counts tasks not in the public list)` : `${days.length} days match exactly`);
     const open = T.filter((t) => t.submissionCount > 0), pick = []; let seed = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ""));
     for (let i = 0; i < 5 && open.length; i++) { seed = (seed * 16807) % 2147483647; pick.push(open[seed % open.length]); }
-    const sub = [];
-    for (const t of pick) {
+    if (process.env.VERIFY_SAMPLE) pick.splice(0, 5, ...T.filter((t) => process.env.VERIFY_SAMPLE.split(",").includes(t.referenceCode)));  // testing only
+    // Taskmarket's submissionCount leaves out rejected entries, so rejected ones in task-stories are not counted.
+    // Known source limits (checked Nov 25 2026): task-stories returns at most 500 submissions per task, and for some
+    // finished tasks it returns an empty list. Those, and a count that moved since the fetch, are WARN, never FAIL,
+    // and only after one refetch. Any other mismatch is a FAIL.
+    const CAP = 500, sub = [];
+    const read = async (t) => {
       const live = await get("/api/tasks/" + t.id), s = await get("/api/task-stories?taskIds=" + t.id);
-      const ids = new Set(); (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === "object") { if (o.submittedAt && o.id) ids.add(o.id); Object.values(o).forEach(w); } })(s);
-      sub.push([t.referenceCode, t.submissionCount, live.submissionCount, ids.size, live.status]);
+      const all = new Set(), kept = new Set(); (function w(o) { if (Array.isArray(o)) o.forEach(w); else if (o && typeof o === "object") { if (o.submittedAt && o.id) { all.add(o.id); if (!o.rejectedAt) kept.add(o.id); } Object.values(o).forEach(w); } })(s);
+      return { now: live.submissionCount, status: live.status, raw: all.size, stories: kept.size, rejected: all.size - kept.size };
+    };
+    const judge = (ours, r) => {
+      if (ours === r.now && r.now === r.stories) return ["PASS", ""];
+      if (r.raw >= CAP && r.now >= CAP && ours >= CAP) return ["WARN", `task-stories stops at ${CAP} (task has ${r.now})`];
+      if (r.raw === 0 && r.now > 0) return ["WARN", "task-stories sent an empty list"];
+      if (r.now === r.stories && r.now !== ours) return ["WARN", `count moved during the fetch (${ours} → ${r.now})`];
+      return ["FAIL", "counts disagree"];
+    };
+    for (const t of pick) {
+      let r = await read(t), [st, why] = judge(t.submissionCount, r), tries = 1;
+      if (st !== "PASS") { await new Promise((z) => setTimeout(z, 1500)); r = await read(t); [st, why] = judge(t.submissionCount, r); tries = 2; }
+      sub.push({ code: t.referenceCode, ours: t.submissionCount, ...r, st, why, tries });
     }
-    const subBad = sub.filter(([, ours, now, stories, status]) => !(ours === now && now === stories) && !(status === "open" && now >= ours && now === stories));
-    const moved = sub.filter(([, ours, now, , status]) => status === "open" && now > ours);
-    add("API reconcile", "submissions (5 random tasks vs task-stories)", subBad.length ? "FAIL" : moved.length ? "WARN" : "PASS", sub.map(([c, o, n, s]) => `${c}: ${o}/${n}/${s}`).join(" · ") + (moved.length ? " · new entries arrived since the fetch" : ""));
+    const subSt = sub.some((x) => x.st === "FAIL") ? "FAIL" : sub.some((x) => x.st === "WARN") ? "WARN" : "PASS";
+    add("API reconcile", "submissions (5 random tasks vs task-stories)", subSt,
+      sub.map((x) => `${x.code}: ${x.ours}/${x.now}/${x.stories}${x.rejected ? ` (+${x.rejected} rejected)` : ""}${x.st !== "PASS" ? ` ${x.st}: ${x.why}${x.tries > 1 ? ", same after a refetch" : ""}` : ""}`).join(" · "));
+    // Machine-readable rows for the email (ours = in our data, now = Taskmarket now, stories = task-stories).
+    checks[checks.length - 1].rows = sub.map((x) => ({ task: x.code, ours: x.ours, now: x.now, stories: x.stories, rejected: x.rejected, status: x.st, why: x.why }));
   } catch (e) { add("API reconcile", "API reachable", "FAIL", String(e.message || e)); }
 } else add("API reconcile", "skipped", "WARN", "--no-api");
 
