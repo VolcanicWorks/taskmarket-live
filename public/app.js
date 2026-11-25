@@ -485,10 +485,13 @@ let RVF = null;  // cached river flows for the current filter
 function payPartial() { const c = M.views[view] && M.views[view].settledCoverage; return c && c[1] && c[0] / c[1] < 0.98 ? Math.floor((100 * c[0]) / c[1]) : 0; }
 // Proportional Tempo/Base split bar: numbers inside the segments (outside, above, when a segment is too narrow), chain labels below.
 function sbar(key, a, b, f, tip) {
+  // Proportional Tempo/Base split bar. A number sits inside its segment when it fits; when a segment is too narrow the
+  // number moves to the label row under the bar ("Base 186"). Nothing is ever drawn above the bar.
   const one = view !== "both", parts = one ? [[view, view === "4217" ? a : b]] : [["4217", a], ["8453", b]], tot = parts.reduce((s, p) => s + p[1], 0) || 1;
-  const seg = parts.map(([c, x]) => { const w = (100 * x) / tot, narrow = !one && w < 22; return `<div class="sg ${c === "4217" ? "t" : "b"}${narrow ? " narrow" : ""}" style="flex:${Math.max(x, tot * 0.04)}"><span>${f(x)}</span></div>`; }).join("");
-  const lab = parts.map(([c, x]) => `<span style="flex:${Math.max(x, tot * 0.04)}">${CH[c]}${one ? " only" : ""}</span>`).join("");
-  return `<div class="sbar" ${tip ? `data-tip="${esc(tip)}" tabindex="0"` : ""}><div class="sbt">${seg}</div><div class="sbl">${lab}</div></div>`;
+  const fits = (x) => one || ((100 * x) / tot >= 22 && String(f(x)).length * 8 + 12 <= ((100 * x) / tot) * 1.6);
+  const seg = parts.map(([c, x]) => `<div class="sg ${c === "4217" ? "t" : "b"}" style="flex:${Math.max(x, tot * 0.04)}">${fits(x) ? `<span>${f(x)}</span>` : ""}</div>`).join("");
+  const lab = parts.map(([c, x]) => `<span>${CH[c]}${one ? " only" : ""}${fits(x) ? "" : ` <b>${f(x)}</b>`}</span>`).join("");
+  return `<div class="sbar" ${tip ? `data-tip="${esc(tip)}" tabindex="0"` : ""}><div class="sbt">${seg}</div><div class="sbl${one ? " one" : ""}">${lab}</div></div>`;
 }
 
 /* chain block (split comparison bars) */
@@ -499,6 +502,6 @@ const grow2 = () => requestAnimationFrame(() => requestAnimationFrame(() => docu
 function chainBlockA(x) { document.getElementById("small4").className = "small4 cb2";
   const cs = cbChains(x), st = Object.fromEntries(cs.map((c) => [c, cbStat(x, c)]));
   const row = (k, label) => { const tot = cs.reduce((a, c) => a + st[c][k], 0) || 1;
-    return `<div class="cbrow"><div class="cbl">${label}<b>${num("cba" + k + x.view, tot)}</b></div><div class="cbbar">${cs.map((c) => `<i class="${c === "4217" ? "t" : "b"}" data-w="${Math.max(6, (100 * st[c][k]) / tot)}" title="${CH[c]}: ${fmt(st[c][k])}">${fmt(st[c][k])}<em>${CH[c]} · ${fmt((100 * st[c][k]) / tot)}%</em></i>`).join("")}</div></div>`; };
+    return `<div class="cbrow"><div class="cbl">${label}<b>${num("cba" + k + x.view, tot)}</b></div><div class="cbbar">${cs.map((c) => { const pc = (100 * st[c][k]) / tot, ok = cs.length === 1 || pc >= 16; return `<i class="${c === "4217" ? "t" : "b"}" data-w="${Math.max(6, pc)}" title="${CH[c]}: ${fmt(st[c][k])}">${ok ? `${fmt(st[c][k])}<em>${CH[c]} · ${fmt(pc)}%</em>` : ""}</i>`; }).join("")}</div>${cs.some((c) => cs.length > 1 && (100 * st[c][k]) / tot < 16) ? `<div class="cbnote">${cs.map((c) => `<span>${(100 * st[c][k]) / tot < 16 ? `${CH[c]} <b>${fmt(st[c][k])}</b> · ${fmt((100 * st[c][k]) / tot)}%` : ""}</span>`).join("")}</div>` : ""}</div>`; };
   return row("paid", "Workers ever paid") + row("wallets", "Active wallets") + row("tasks", "Tasks posted · 30d") +
     `<div class="cbfoot"><span>Registered workers (platform-wide) <b style="color:var(--cream)">${num("cbareg", st[cs[0]].reg)}</b></span><span><i class="dot t"></i>Tempo <i class="dot b" style="margin-left:10px"></i>Base</span></div>`; }

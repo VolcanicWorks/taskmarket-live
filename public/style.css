@@ -297,8 +297,6 @@ main.m{max-width:1600px;margin:0 auto}
 .sbar{width:100%;margin-top:14px}.sbt{display:flex;gap:3px;height:22px}
 .sg{position:relative;border-radius:6px;display:flex;align-items:center;justify-content:center;min-width:6px}.sg.t{background:var(--pink)}.sg.b{background:var(--base)}
 .sg span{font:600 12px IT,sans-serif;color:#0B0B0C;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sg.narrow span{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);color:var(--cream)}
-.sg.narrow:last-child span{left:auto;right:0;transform:none}
 .sbl{display:flex;gap:3px;margin-top:5px;font:10px DM,monospace;color:var(--mu)}.sbl span{text-align:center;white-space:nowrap;overflow:visible;min-width:0}.sbl span:last-child{text-align:center}
 .c-a .bn .split,.c-a .bn .splitlab{display:none}
 .rflex3{grid-template-columns:168px minmax(0,1fr) 168px!important;gap:12px}
@@ -359,3 +357,8 @@ html,body{overflow-x:clip}body{overflow-x:hidden}
 @media(max-width:960px){.rflex3 .lpanel,.rflex3 .rpanel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}}
 .hc span{white-space:nowrap;font-size:9px}
 @media(max-width:700px){.ptab th{font-size:10px;letter-spacing:0;text-overflow:clip}.ptab th:nth-child(3),.ptab td:nth-child(3){width:50px}}
+
+/* v71: split-bar labels never above the bar */
+.sbl{display:flex;justify-content:space-between;gap:8px}.sbl span{flex:0 1 auto!important;white-space:nowrap}.sbl.one{justify-content:center}.sbl b{color:var(--cream);font-weight:600;font-family:IT,sans-serif;font-size:11px}
+.cbbar{flex-wrap:nowrap}.cbnote{grid-column:2;display:flex;justify-content:space-between;font:10px DM,monospace;color:var(--mu);margin-top:4px}.cbnote b{color:var(--cream);font-family:IT,sans-serif}
+@media(max-width:700px){.cbnote{grid-column:1}}
