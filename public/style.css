@@ -447,3 +447,5 @@ html[data-theme="light"] .dot.b,html[data-theme="light"] .sg.b,html[data-theme="
 @media(min-width:1000px){#entries{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 24px}#entries .sh,#entries .entstats{grid-column:1/-1}#entries .hot-h{grid-column:2;grid-row:3;margin-top:0}#entries #enthist{grid-column:1;grid-row:3/5}#entries .hot{grid-column:2;grid-row:4}}
 @media(max-width:700px){#entries .entstats{grid-template-columns:1fr 1fr}}
 #top,#entries{margin-bottom:24px}
+/* v77: tasks Taskmarket counts but no public list returns (By status / By mode keys, Both view) */
+.key small.unl{font-size:11px;color:var(--mu);font-style:italic;margin-left:2px}

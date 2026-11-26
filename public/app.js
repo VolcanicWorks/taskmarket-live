@@ -27,7 +27,7 @@ const cv = $("#rv"), X = cv.getContext("2d");
 let W = 0, H = 0, P = [], pops = [], live = [], landed = 0;
 function fit() { const r = cv.getBoundingClientRect(), k = Math.min(2, devicePixelRatio || 1); cv.width = r.width * k; cv.height = r.height * k; X.setTransform(k, 0, 0, k, 0, 0); W = r.width; H = r.height; }
 addEventListener("resize", fit);
-const OUT = ["paid", "open", "died"], OC = { paid: C.pink, open: C.sage, died: C.ash }, OL = { paid: "Paid to winners", open: "Still open", died: "Expired or refunded" };
+const OUT = ["paid", "open", "died"], OC = { paid: C.pink, open: C.sage, died: C.ash }, OL = { paid: "Paid to winners", open: "Not settled yet", died: "Expired or refunded" };
 function sum(fl, key, val) { return fl.filter((f) => f[key] === val).reduce((a, f) => a + f.amount, 0); }
 function layout() {
   const fl = RVF || (RVF = VD().flows), tot = fl.reduce((a, f) => a + f.amount, 0) || 1;
@@ -167,7 +167,7 @@ function numbers() {
   const full = (c) => bc[c] && bc[c].settledCoverage[0] >= 0.98 * bc[c].settledCoverage[1];
   const paidBar = full("4217") && full("8453") ? sbar("paid", p30("4217", "paidVolume"), p30("8453", "paidVolume"), (x) => money(x), "Split of rewards paid in 30 days, from payout times (OUSD on Tempo, USDC on Base)") : "";
   $("#big4").innerHTML = [
-    `<div class="bn" data-k="open" tabindex="0" data-tip="Open tasks in the task list · ${VNAME()}"><div class="l">Open tasks</div><div class="v">${num("open", v.open)}</div>${wow("tasksCreated").replace("vs last week", "new tasks vs last week")}${openCard}</div>`,
+    `<div class="bn" data-k="open" tabindex="0" data-tip="Open now: tasks taking entries whose deadline has not passed (the same count as Taskmarket's own open tasks). Money flow's &quot;Not settled yet&quot; is wider: it also counts tasks past their deadline that are still waiting for a result. · ${VNAME()}"><div class="l">Open now</div><div class="v">${num("open", v.open)}</div>${wow("tasksCreated").replace("vs last week", "new tasks vs last week")}${openCard}</div>`,
     `<div class="bn" data-k="agents" tabindex="0" data-tip="Agents active in the last 7 days. The API gives this platform-wide only (the same for both chains)."><div class="l">Active agents${both ? "" : " · platform"}</div><div class="v">${num("agents", t.stats.activeAgents7d)}</div>${wow("activeAgents", true, plat)}${spark(col("activeAgents", plat), C.pink)}</div>`,
     `<div class="bn" data-k="posted" tabindex="0" data-tip="Rewards put up in the last 30 days · ${VNAME()} · ${UNIT()}"><div class="l">Posted · 30d</div><div class="v">${num("rp30", tot("rewardVolume"), amtFmt())}${unitS}</div>${wow("rewardVolume")}${spark(col("rewardVolume"), C.pink)}${postedBar}</div>`,
     `<div class="bn" data-k="paid30" tabindex="0" data-tip="Rewards paid to winners in the last 30 days · ${VNAME()} · ${UNIT()}"><div class="l">Paid · 30d</div>${payPartial() ? `<div class="v">–</div><div class="partial">payout history loading · ${payPartial()}%</div>` : `<div class="v">${num("pd30", tot("paidVolume"), amtFmt())}${unitS}</div>${wow("paidVolume")}${spark(col("paidVolume"), C.pink)}${paidBar}`}</div>`,
@@ -198,7 +198,7 @@ function insights() {
   const diedN = v.diedTasks, paidN = v.paidTasks, mx = Math.max(diedN, paidN, 1);
   $("#vis4").innerHTML = [
     `<div class="card vi" tabindex="0" data-tip="Top 3 posters (${VNAME()}):\n${esc(top)}\nof ${fmt(v.taskCount)} tasks"><div class="ring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="${R}"/><circle class="fg" cx="60" cy="60" r="${R}" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}" data-off="${CIRC * (1 - v.top3Share / 100)}"/></svg><div class="big">${num("v-conc", v.top3Share, "pct0")}</div></div><div class="c">of tasks come from 3 posters</div></div>`,
-    `<div class="card vi" tabindex="0" data-tip="Rewards posted (${UNIT()}): ${amtTxt(all)}\nPaid ${amtTxt(paid)} · open ${amtTxt(open)} · expired or refunded ${amtTxt(died)}"><div class="big p">${num("v-paid", (100 * paid) / all, "pct0")}</div><div class="stack"><i data-w="${(100 * paid) / all}" style="background:${C.pink}"></i><i data-w="${(100 * open) / all}" style="background:${C.sage}"></i><i data-w="${(100 * died) / all}" style="background:${C.ash}"></i></div><div class="legend"><span><i class="dot" style="background:${C.pink}"></i>paid</span><span><i class="dot" style="background:${C.sage}"></i>open</span><span><i class="dot" style="background:${C.ash}"></i>died</span></div><div class="c">of rewards paid out</div></div>`,
+    `<div class="card vi" tabindex="0" data-tip="Rewards posted (${UNIT()}): ${amtTxt(all)}\nPaid ${amtTxt(paid)} · not settled yet ${amtTxt(open)} · expired or refunded ${amtTxt(died)}"><div class="big p">${num("v-paid", (100 * paid) / all, "pct0")}</div><div class="stack"><i data-w="${(100 * paid) / all}" style="background:${C.pink}"></i><i data-w="${(100 * open) / all}" style="background:${C.sage}"></i><i data-w="${(100 * died) / all}" style="background:${C.ash}"></i></div><div class="legend"><span><i class="dot" style="background:${C.pink}"></i>paid</span><span><i class="dot" style="background:${C.sage}"></i>open</span><span><i class="dot" style="background:${C.ash}"></i>died</span></div><div class="c">of rewards paid out</div></div>`,
     `<div class="card vi med" tabindex="0" data-tip="Median hours from posting to payout over the last ${mp.n} payouts seen (${VNAME()})."><div class="big">${med != null ? num("v-med", med, "h") : "–"}<span class="u">hours</span></div><div class="day"><div class="trk"><i class="tl" data-w="${med != null ? Math.min(100, (100 * med) / 24) : 0}"></i></div><div class="ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24h</span></div></div><div class="c">${med != null ? "median time to payout" : "too few recent payouts on " + VNAME() + " to say"}</div></div>`,
     `<div class="card vi" tabindex="0" data-tip="Tasks that expired or were cancelled without a winner, vs tasks paid out (${VNAME()})."><div class="dvp"><div class="col"><div class="vs1"><div class="vb" data-h="${(100 * diedN) / mx}" style="background:${C.ash}"></div></div><div class="n">${num("v-died", diedN)}</div><div class="c">died without a winner</div></div><div class="col"><div class="vs1"><div class="vb" data-h="${(100 * paidN) / mx}" style="background:${C.pink}"></div></div><div class="n p">${num("v-paidn", paidN)}</div><div class="c">paid out</div></div></div></div>`,
   ].join("");
@@ -243,7 +243,10 @@ const MC = { bounty: "#E63F78", claim: "#FF8FB5", pitch: "#A8245A", benchmark: "
 const SC = { completed: "#E63F78", open: "#9FB49A", claimed: "#FF8FB5", worker_selected: "#D9A097", pending_approval: "#FFF6E8", cancelled: "#6b6058", expired: "#4a423b" };
 const lab = (s) => String(s).replace(/_/g, " ");
 // Tile fill: 200 tiles per grid, 1 tile = 0.5% of tasks (largest-remainder rounding to exactly 200; tiny groups keep 1 tile).
-function waffle(el, title, rows, k, col) {
+function waffle(el, title, rows, k, col, extra = {}) {
+  // extra[key] = tasks Taskmarket counts that no public list returns (Both view only): added to that key and labelled.
+  rows = rows.map((r) => ({ ...r })); for (const [x, n] of Object.entries(extra)) { const r = rows.find((r) => r[k] === x); if (r) r.count += n; else rows.push({ [k]: x, count: n }); }
+  const ex = (r) => extra[r[k]] || 0, exT = (r) => (ex(r) ? ` (${fmt(ex(r))} not in public lists)` : "");
   const N = 200, t = rows.reduce((a, r) => a + r.count, 0) || 1; rows = rows.slice().sort((a, b) => b.count - a.count);
   const sig = JSON.stringify(rows); if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   const q = rows.map((r) => ({ r, n: Math.max(r.count ? 1 : 0, Math.floor((N * r.count) / t)), f: ((N * r.count) / t) % 1 }));
@@ -251,13 +254,14 @@ function waffle(el, title, rows, k, col) {
   while (s > N) { const m = q.reduce((a, x) => (x.n > a.n ? x : a)); m.n--; s--; }
   const top = rows[0]; let i = 0;
   el.innerHTML = `<h3>${title}</h3><div class="wcap">${num("w-" + k, Math.round((100 * top.count) / t), "pct0")} <span>are ${esc(lab(top[k]))}</span></div><div class="waffle">` +
-    q.map((x) => Array.from({ length: x.n }, () => `<i style="background:${col[x.r[k]] || "#888"};transition-delay:${(i++) * 6}ms" title="${esc(lab(x.r[k]))}: ${fmt(x.r.count)} tasks"></i>`).join("")).join("") +
-    `</div><div class="key">${rows.map((r) => `<span tabindex="0" data-tip="${esc(lab(r[k]))}: ${fmt(r.count)} tasks (${fmt((100 * r.count) / t, 1)}%)"><i style="background:${col[r[k]] || "#888"}"></i>${esc(lab(r[k]))} <b>${fmt(r.count)}</b></span>`).join("")}</div>`;
+    q.map((x) => Array.from({ length: x.n }, () => `<i style="background:${col[x.r[k]] || "#888"};transition-delay:${(i++) * 6}ms" title="${esc(lab(x.r[k]))}: ${fmt(x.r.count)} tasks${exT(x.r)}"></i>`).join("")).join("") +
+    `</div><div class="key">${rows.map((r) => `<span tabindex="0" data-tip="${esc(lab(r[k]))}: ${fmt(r.count)} tasks (${fmt((100 * r.count) / t, 1)}%)${ex(r) ? `\n${fmt(r.count - ex(r))} in the public task lists + ${fmt(ex(r))} that Taskmarket counts but no public list shows` : ""}"><i style="background:${col[r[k]] || "#888"}"></i>${esc(lab(r[k]))} <b>${fmt(r.count)}</b>${ex(r) ? `<small class="unl">${fmt(ex(r))} not in public lists</small>` : ""}</span>`).join("")}</div>`;
 }
 function mix() {
   const bd = EX().breakdowns || M.breakdowns;
-  waffle($("#modes"), "By mode", bd.mode, "mode", MC);
-  waffle($("#statuses"), "By status", bd.status, "status", SC);
+  const U = view === "both" && M.unlisted ? M.unlisted : { status: {}, mode: {} };
+  waffle($("#modes"), "By mode", bd.mode, "mode", MC, U.mode);
+  waffle($("#statuses"), "By status", bd.status, "status", SC, U.status);
   whenSeen($("#mix"), () => runNums($("#mix")));
 }
 function posters() {
@@ -383,7 +387,7 @@ function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = fals
 
 /* ledger cards beside the river: posters (left) and outcomes (right), real per-chain values */
 FMT.amt = (v) => money(v);
-const OUTS = [["paid", "Paid to winners", C.pink], ["open", "Still open", C.sage], ["died", "Expired or refunded", C.ash]];
+const OUTS = [["paid", "Paid to winners", C.pink], ["open", "Not settled yet", C.sage], ["died", "Expired or refunded", C.ash]];
 let ledgerSig = "";
 function ledgers() {
   if (!M || !$("#lpanel")) return;

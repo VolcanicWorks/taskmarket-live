@@ -7,6 +7,16 @@ The page only ever shows data that passed `verify.mjs`.
   (`status=open|completed|cancelled|expired|claimed|pending_approval|worker_selected`) merged and de-duplicated by task id.
   Each list alone misses tasks; the union matches Taskmarket's own status totals.
 - "Open now" = in the `status=open` list and not past its deadline (equals Taskmarket's `openTasks`).
+  Money flow's "Not settled yet" is wider: every task not paid and not expired/cancelled, including tasks past their
+  deadline that are still open, claimed, awaiting approval or with a worker selected. The page labels both and explains
+  the difference in "How this works".
+- Tasks not in public lists: Taskmarket's own status and mode totals (`/api/stats/breakdowns`, both chains) include a
+  few tasks that no public list returns. Checked Nov 26 2026: every status, mode and phase filter, the requester filter
+  and the explorer feed (which only reaches back about four weeks) leave them out, and `platform-time-series` shows
+  they were all posted in June 2026 (2 on Jun 21, 15 on Jun 29; 15 still "open" past their deadline, 2 "worker
+  selected"). They cannot be fetched, so `fetch.py` records them as `unlisted` (per status and per mode, measured
+  against Taskmarket's totals taken right after the lists are read). In the Both view, "By status" and "By mode" show
+  Taskmarket's totals with "N not in public lists"; every other section counts only the fetched tasks.
 - Titles are cleaned once (escaped or real newlines become spaces, a leading markdown `#` is removed).
 - Every section's numbers for Both, Tempo and Base come from one function, `build_view()`, run on that set. The page does
   no counting of its own. Payout times come from `/api/tasks/{id}` (`awards.settledAt`), cached in `.state/settlements.json`.
@@ -35,8 +45,10 @@ The page shows
    WARN, never a FAIL, and only after one refetch: task-stories stops at 500 submissions per task, it returns an empty
    list for some finished tasks, and a count can move while the data is read. Any other mismatch is a FAIL.
 
-Result: PASS, WARN or FAIL per check. Any FAIL blocks publishing. The one known WARN: the API's breakdown counts a few
-open / worker-selected tasks that never appear in any public task list (probably private tasks), so they cannot be shown.
+Result: PASS, WARN or FAIL per check. Any FAIL blocks publishing. Each Taskmarket status total must equal the listed
+count plus the unlisted count for that status. The check "tasks not in public lists" makes sure the unlisted counts are
+exactly the tasks missing from the lists: the status gaps, the mode gaps and Taskmarket's total minus our task count must
+all be equal (WARN only if Taskmarket's totals changed while the lists were read, FAIL otherwise).
 
 ## Run by hand
 ```

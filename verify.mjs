@@ -87,8 +87,14 @@ if (!NOAPI) {
     }
     const bd = await get("/api/stats/breakdowns?chainId=4217"), ours = Object.fromEntries(B.breakdowns.status.map((r) => [r.status, r.count]));
     let gap = 0;
+    // Tasks Taskmarket counts but no public list returns: the page shows them per status as "not in public lists".
+    // They must be exactly the tasks missing from the lists: status gaps = mode gaps = Taskmarket's total minus ours.
+    const U = M.unlisted || { total: 0, status: {}, mode: {} }, us = sum(Object.values(U.status)), um = sum(Object.values(U.mode));
+    const totA = W.after ? sum(Object.values(W.after.status)) - B.taskCount : undefined, moved = W.before && W.after && JSON.stringify(W.before.status) !== JSON.stringify(W.after.status);
+    add("API reconcile", "tasks not in public lists", us === U.total && um === U.total && U.total === totA ? "PASS" : moved ? "WARN" : "FAIL",
+      `${U.total} (by status ${us}, by mode ${um}, Taskmarket total minus ours ${totA})` + (us === U.total && um === U.total && U.total === totA ? "" : moved ? " · market moved during the fetch" : ""));
     for (const r of bd.status) {
-      const o = ours[r.status] || 0, a = W.before && W.before.status[r.status], b = W.after && W.after.status[r.status];
+      const o = (ours[r.status] || 0) + (U.status[r.status] || 0), a = W.before && W.before.status[r.status], b = W.after && W.after.status[r.status];
       if (o === r.count || inWin(o, a, b)) add("API reconcile", `status ${r.status}`, "PASS", `${o} · ${winTxt(a, b, r.count)}`);
       else if (["open", "worker_selected"].includes(r.status) && o < Math.min(r.count, b ?? r.count)) { const g = Math.min(r.count, b ?? r.count) - o; gap += g; add("API reconcile", `status ${r.status}`, "WARN", `${o} listed vs ${winTxt(a, b, r.count)}: ${g} not in any public task list`); }
       else add("API reconcile", `status ${r.status}`, "FAIL", `${o} · ${winTxt(a, b, r.count)}`);

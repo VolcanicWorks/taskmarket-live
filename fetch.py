@@ -272,7 +272,7 @@ def full(out, state_dir, name="market.json"):
     m = {"asOf": now_iso(), "chains": {}, "series": {}, "sources": [], "views": {}}
     src = m["sources"]
     snap = lambda: {"openTasks": get("/api/market/stats?chainId=4217")["openTasks"],
-                    "status": {r["status"]: r["count"] for r in get("/api/stats/breakdowns?chainId=4217")["status"]}}
+                    **(lambda b: {"status": {r["status"]: r["count"] for r in b["status"]}, "mode": {r["mode"]: r["count"] for r in b["mode"]}})(get("/api/stats/breakdowns?chainId=4217"))}
     m["apiWindow"] = {"before": snap()}  # Taskmarket's own totals just before and just after the task lists are read
     for c in CHAINS:
         canon[c] = canonical(c, now)
@@ -288,6 +288,14 @@ def full(out, state_dir, name="market.json"):
     m["views"]["both"] = build_view(every, names, sett, now)
     for c in CHAINS:
         m["views"][c] = build_view(canon[c], names, sett, now)
+    # Taskmarket's own totals (both chains) count some tasks that no public task list returns (checked Nov 26 2026:
+    # every list, status, mode and phase filter, and the explorer feed; all were posted in June 2026). They cannot be
+    # fetched, so the page shows them separately, per status and mode, as "not in public lists" (Both view only:
+    # their chain is unknown). Gaps are measured against the snapshot taken right after the lists were read.
+    aft, B = m["apiWindow"]["after"], m["views"]["both"]
+    ours = lambda k, key: {r[key]: r["count"] for r in B["breakdowns"][k]}
+    gap = lambda k, key: {x: n - ours(k, key).get(x, 0) for x, n in aft[k].items() if n > ours(k, key).get(x, 0)}
+    m["unlisted"] = {"total": max(0, sum(aft["status"].values()) - B["taskCount"]), "status": gap("status", "status"), "mode": gap("mode", "mode")}
     for rng, bucket in (("7d", "day"), ("30d", "day"), ("90d", "day"), ("all", "week")):
         m["series"][rng] = get("/api/stats/platform-time-series?chainId=4217&range=%s&bucket=%s" % (rng, bucket))
         src.append("/api/stats/platform-time-series?range=%s&bucket=%s" % (rng, bucket))
