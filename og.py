@@ -3,7 +3,7 @@
 import json, sys, html
 out = sys.argv[1]
 m = json.load(open(out + "/data/market.json"))
-t = m["chains"]["4217"]; fl = t["flows"]; tot = sum(f["amount"] for f in fl) or 1; paid = sum(f["amount"] for f in fl if f["to"] == "paid")
+t = m["views"]["4217"] if "views" in m else m["chains"]["4217"]; fl = t["flows"]; tot = sum(f["amount"] for f in fl) or 1; paid = sum(f["amount"] for f in fl if f["to"] == "paid")
 s30 = m["series"]["30d"]; posted = sum(int(r["rewardVolume"]) for r in s30) / 1e6; paid30 = sum(int(r["paidVolume"]) for r in s30) / 1e6
 bands = ""; y0 = {}; y1 = {"paid": 120, "open": 330, "died": 470}
 froms = sorted({f["from"] for f in fl}, key=lambda a: (a == "others", -sum(f["amount"] for f in fl if f["from"] == a)))
