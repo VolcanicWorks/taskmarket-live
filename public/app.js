@@ -7,7 +7,7 @@ const fmt = (n, d = 0) => Number(n).toLocaleString("en-US", { maximumFractionDig
 const money = (b) => { const v = b / U; return v >= 100 ? fmt(v) : v >= 1 ? fmt(v, 1) : fmt(v, 2); };
 const usd = (b) => "$" + money(b);
 const short = (a) => (a && a.length > 12 ? a.slice(0, 6) + "…" + a.slice(-4) : a || "");
-const cleanT = (s) => String(s ?? "").replace(/\\[nr]|[\r\n]+/g, " ").replace(/\s+/g, " ").trim().replace(/^#+\s*/, "");
+const cleanT = (s) => String(s ?? "").replace(/\\[nr]|[\r\n]+/g, " ").replace(/\s+/g, " ").replace(/\*\*|__/g, "").trim().replace(/^[#>*\-_`\s]+/, "").trim();  // poster text: plain, one line, no markdown marks (esc() escapes HTML)
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 90 ? Math.round(s) + "s" : s < 5400 ? Math.round(s / 60) + "m" : s < 172800 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; };
 let M = null, L = null, chain = "4217", range = "30d";
@@ -214,6 +214,14 @@ const CK = [["activeAgents", "Active agents", "peak"], ["tasksCreated", "Tasks p
 const NPT = 96, curY = {};
 function resample(v) { if (v.length < 2) return Array(NPT).fill(v[0] || 0); return Array.from({ length: NPT }, (_, i) => { const x = (i * (v.length - 1)) / (NPT - 1), a = Math.floor(x), b = Math.min(v.length - 1, a + 1); return v[a] + (v[b] - v[a]) * (x - a); }); }
 function paths(ys) { const d = "M" + ys.map((y, i) => ((i * 300) / (NPT - 1)).toFixed(1) + " " + (96 - y * 88).toFixed(1)).join(" L"); return [d, d + " L300 100 L0 100Z"]; }
+// Tasks Taskmarket counts but no public list returns, by posting day (Both view only: their chain is unknown).
+// unlDay(k, from, to): their tasks (k = tasksCreated) or reward (k = rewardVolume) posted on days from <= d < to.
+function unlDay(k, from, to) {
+  if (view !== "both" || !M.unlisted || !M.unlisted.days || !from || !["tasksCreated", "rewardVolume"].includes(k)) return 0;
+  const key = k === "tasksCreated" ? "tasks" : "reward", f = from.slice(0, 10), t = to ? to.slice(0, 10) : (to === null ? "9999" : f + "~");
+  return Object.entries(M.unlisted.days).reduce((a, [d, x]) => a + (d >= f && (to === undefined ? d === f : d < t) ? x[key] : 0), 0);
+}
+const f2 = (k, x) => (k === "rewardVolume" ? amtTxt(x) : fmt(x) + (x === 1 ? " task" : " tasks"));
 function charts() {
   const ser = (k) => (k === "activeAgents" ? M.series : EX().series)[range], s = ser("tasksCreated"), lab = s.map((r) => r.bucket.slice(5)), box = $("#charts");
   if (!box.dataset.init) {
@@ -222,7 +230,8 @@ function charts() {
     box.querySelectorAll(".chart").forEach((el) => el.querySelector("svg").addEventListener("pointermove", (e) => {
       const k = el.dataset.k, ss = (k === "activeAgents" ? M.series : EX().series)[range], f = k.endsWith("Volume") ? amtTxt : fmt, r = e.currentTarget.getBoundingClientRect();
       const i = Math.max(0, Math.min(ss.length - 1, Math.round(((e.clientX - r.left) / r.width) * (ss.length - 1))));
-      el.querySelector(".tip").textContent = ss[i].bucket.slice(5) + " · " + f(Number(ss[i][k]));
+      const ux = unlDay(k, ss[i].bucket, ss[i + 1] ? ss[i + 1].bucket : null);
+      el.querySelector(".tip").textContent = ss[i].bucket.slice(5) + " · " + f(Number(ss[i][k])) + (ux ? " · +" + f(ux) + " not in public lists" : "");
     }));
   }
   for (const [k, , kind] of CK) {
@@ -230,7 +239,8 @@ function charts() {
     const big = kind === "peak" ? Math.max(...v) : v.reduce((a, b) => a + b, 0);
     el.classList.toggle("partial", k === "paidVolume" && !!payPartial());
     if (k === "paidVolume" && payPartial()) { el.querySelector(".v").innerHTML = `– <small>payout history loading · ${payPartial()}%</small>`; curY[k] = to; continue; }
-    el.querySelector(".v").innerHTML = num("c-" + k, big, k.endsWith("Volume") ? amtFmt() : "int") + (kind === "peak" ? " <small>peak</small>" : "") + (k.endsWith("Volume") && view !== "both" ? ` <small>${TOK[view]}</small>` : "") + (k === "activeAgents" && view !== "both" ? " <small>platform</small>" : "");
+    el.querySelector(".v").innerHTML = num("c-" + k, big, k.endsWith("Volume") ? amtFmt() : "int") + (kind === "peak" ? " <small>peak</small>" : "") + (k.endsWith("Volume") && view !== "both" ? ` <small>${TOK[view]}</small>` : "") + (k === "activeAgents" && view !== "both" ? " <small>platform</small>" : "")
+      + ((ux) => (ux ? ` <small class="unl" data-tip="Taskmarket also counts ${esc(f2(k, ux))} posted in this range in tasks that no public task list returns, so they are not in this chart">+${esc(f2(k, ux))} not in public lists</small>` : ""))(unlDay(k, s[0] && s[0].bucket, null));
     el.querySelector(".a0").textContent = lab[0] || ""; el.querySelector(".a1").textContent = lab[lab.length - 1] || "";
     const from = curY[k] || to.map(() => 0), ln = el.querySelector(".ln"), ar = el.querySelector(".ar"), shm = el.querySelector(".shm");
     const draw = (u) => { const ys = from.map((y, i) => y + (to[i] - y) * u); const [d, a] = paths(ys); ln.setAttribute("d", d); ar.setAttribute("d", a); shm.setAttribute("d", d); };
@@ -316,7 +326,7 @@ function feed(items) {
 // Recent winners conveyor: square pink tiles, newest first; each opens its task page on taskmarket.dev.
 const taskURL = (p) => "https://taskmarket.dev/tasks/" + encodeURIComponent(p.taskId);
 function tileHTML(p, cls) {
-  return `<a class="wt ${cls || ""}" href="${taskURL(p)}" target="_blank" rel="noopener noreferrer" data-tip="${esc((p.code || "") + " " + p.title)}\nfrom ${esc(nm(p.poster))} · paid ${p.hoursToPay} h after posting"><div class="tile"><div class="a">+${money(p.amount)}</div><div class="t">${TOK[p.chainId]}</div></div><div class="who">${esc(nm(p.winner))}</div><div class="ago">${ago(p.settledAt)} ago · ${CH[p.chainId]}</div></a>`;
+  return `<a class="wt ${cls || ""}" href="${taskURL(p)}" target="_blank" rel="noopener noreferrer" data-tip="${esc((p.code || "") + " " + cleanT(p.title))}\nfrom ${esc(nm(p.poster))} · paid ${p.hoursToPay} h after posting"><div class="tile"><div class="a">+${money(p.amount)}</div><div class="t">${TOK[p.chainId]}</div></div><div class="who">${esc(nm(p.winner))}</div><div class="ago">${ago(p.settledAt)} ago · ${CH[p.chainId]}</div></a>`;
 }
 function payoutsList() {
   const ps = payoutsInView(), items = ps.slice(-14).reverse().map((p) => tileHTML(p)).join("");
@@ -438,7 +448,7 @@ function entries() {
   const mx = Math.max(...E.hist.map((h) => h.tasks), 1);
   $("#enthist").innerHTML = `<div class="hb">` + E.hist.map((h) => `<div class="hc" tabindex="0" data-tip="${fmt(h.tasks)} tasks got ${h.label} entries"><div class="hv"><i class="gh" data-h="${(100 * h.tasks) / mx}"></i></div><span>${h.label}</span></div>`).join("") + `</div><p class="cap" style="margin:6px 0 0;text-align:center">Tasks by number of entries · ${fmt(E.tasks)} tasks, ${VNAME()}</p>`;
   const hm = Math.max(...E.hotOpen.map((h) => h.entries), 1);
-  $("#hot").innerHTML = E.hotOpen.length ? E.hotOpen.map((h) => `<li><a href="https://taskmarket.dev/tasks/${encodeURIComponent(h.taskId)}" target="_blank" rel="noopener noreferrer"><span class="ht">${esc(h.title)}</span><span class="hm">${esc(h.code || "")} · ${money(h.reward)} ${TOK[h.chainId]}</span><span class="hbr"><i class="gw" data-w="${(100 * h.entries) / hm}"></i></span><b>${num("hot-" + h.taskId, h.entries)}</b></a></li>`).join("") : `<li class="mut">No open tasks on ${VNAME()} right now.</li>`;
+  $("#hot").innerHTML = E.hotOpen.length ? E.hotOpen.map((h) => `<li><a href="https://taskmarket.dev/tasks/${encodeURIComponent(h.taskId)}" target="_blank" rel="noopener noreferrer"><span class="ht">${esc(cleanT(h.title))}</span><span class="hm">${esc(h.code || "")} · ${money(h.reward)} ${TOK[h.chainId]}</span><span class="hbr"><i class="gw" data-w="${(100 * h.entries) / hm}"></i></span><b>${num("hot-" + h.taskId, h.entries)}</b></a></li>`).join("") : `<li class="mut">No open tasks on ${VNAME()} right now.</li>`;
   whenSeen($("#entries"), () => { runNums($("#entries")); grow($("#entries")); });
 }
 function findings() {

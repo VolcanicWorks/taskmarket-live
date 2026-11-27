@@ -186,9 +186,11 @@ STATUSES = ["open", "completed", "cancelled", "expired", "claimed", "pending_app
 
 
 def clean(s):
-    """One-line title: escaped or real newlines become spaces, leading markdown '#' is dropped."""
+    """One-line plain-text title: escaped or real newlines become spaces, leading markdown marks (# > * - _ `) and
+    **bold** markers are dropped. Poster text is shown as plain text; the page escapes HTML when it renders it."""
     s = (s or "").replace("\\n", " ").replace("\\r", " ").replace("\n", " ").replace("\r", " ")
-    return re.sub(r"^#+\s*", "", re.sub(r"\s+", " ", s).strip())
+    s = re.sub(r"\*\*|__", "", re.sub(r"\s+", " ", s).strip())
+    return re.sub(r"^[#>*\-_`\s]+", "", s).strip()
 
 
 def pages(q):
@@ -299,6 +301,17 @@ def full(out, state_dir, name="market.json"):
     for rng, bucket in (("7d", "day"), ("30d", "day"), ("90d", "day"), ("all", "week")):
         m["series"][rng] = get("/api/stats/platform-time-series?chainId=4217&range=%s&bucket=%s" % (rng, bucket))
         src.append("/api/stats/platform-time-series?range=%s&bucket=%s" % (rng, bucket))
+    # The same unlisted tasks, by the day they were posted: Taskmarket's own daily counts (all time) minus the tasks
+    # in the public lists. verify.mjs checks these add up to exactly the unlisted total; the page notes them per day.
+    allday = get("/api/stats/platform-time-series?chainId=4217&range=all&bucket=day")
+    cr, rw = {}, {}
+    for t in every:
+        d = t["createdAt"][:10]
+        cr[d] = cr.get(d, 0) + 1
+        rw[d] = rw.get(d, 0) + t["reward"]
+    m["unlisted"]["days"] = {r["bucket"]: {"tasks": int(r["tasksCreated"]) - cr.get(r["bucket"], 0), "reward": int(r["rewardVolume"]) - rw.get(r["bucket"], 0)}
+                             for r in allday if int(r["tasksCreated"]) != cr.get(r["bucket"], 0) or int(r["rewardVolume"]) != rw.get(r["bucket"], 0)}
+    src.append("/api/stats/platform-time-series?range=all&bucket=day (unlisted tasks by day)")
     m["apiBreakdowns"] = get("/api/stats/breakdowns?chainId=4217")
     m["heatmap"] = get("/api/stats/activity-heatmap?chainId=4217&range=30d&dimension=hourOfWeek")
     feed = get("/api/stats/activity-feed?chainId=4217&limit=50")["items"]
