@@ -449,3 +449,12 @@ html[data-theme="light"] .dot.b,html[data-theme="light"] .sg.b,html[data-theme="
 #top,#entries{margin-bottom:24px}
 /* v77: tasks Taskmarket counts but no public list returns (By status / By mode keys, Both view) */
 .key small.unl{font-size:11px;color:var(--mu);font-style:italic;margin-left:2px}
+/* v79 */
+.sg{min-width:max-content;padding:0 8px;overflow:hidden}.sbl span{flex:0 0 auto!important}
+.cbbar i{min-width:max-content}.cbnote{display:none}
+.wow{max-width:100%;overflow:hidden}.wow em{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed{scrollbar-gutter:stable}.feed li{padding-right:10px}
+.chart{display:flex;flex-direction:column}.chart svg{margin-top:auto}.chart .v small.unl{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dvp{align-items:start}.dvp .col{min-width:0}.dvp .n{font-size:clamp(20px,2.3vw,28px)}.dvp .c{min-height:2.7em;text-align:center}
+@media(min-width:701px){.ptab th:nth-child(1),.ptab td:nth-child(1){width:40px}.ptab th:nth-child(3),.ptab td:nth-child(3){width:80px}.ptab th:nth-child(4),.ptab td:nth-child(4){width:120px}.ptab th:nth-child(5),.ptab td:nth-child(5){width:28%}}
+.cbfoot{flex-wrap:wrap;gap:8px 18px}#livestat .nw{white-space:nowrap}

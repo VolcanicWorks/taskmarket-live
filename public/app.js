@@ -364,7 +364,7 @@ async function loadLive(first) {
   if (!first && changed) document.dispatchEvent(new CustomEvent("tm-activity", { detail: { payouts: ps.filter((p) => p.settledAt > (loadLive.prevNewest || "")).length } }));  // used by the header heartbeat
   loadLive.prevNewest = newest;
   if (changed) { feed((L.feed || []).concat(M && M.feedMore ? M.feedMore : [])); payoutsList(); } if (M && L.medianHoursToPay !== loadLive.med) { loadLive.med = L.medianHoursToPay; insights(); }
-  $("#livestat").textContent = `Live · every ${L.everySeconds || 10} seconds · checked ${lastLiveCheck.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · ${landed} landed`;
+  $("#livestat").innerHTML = ["Live", `every ${L.everySeconds || 10} seconds`, `checked ${lastLiveCheck.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`, `${landed} landed`].map((t) => `<span class="nw">${esc(t)}</span>`).join(" · ");
 }
 document.querySelectorAll("[data-view-btn]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.viewBtn)));
 document.querySelectorAll("#range button").forEach((b) => b.addEventListener("click", () => { range = b.dataset.r; document.querySelectorAll("#range button").forEach((x) => x.classList.toggle("on", x === b)); charts(); }));
@@ -410,7 +410,7 @@ function ledgers() {
   const sig = view + JSON.stringify(left.map((x) => [x.k, x.v, x.n])) + JSON.stringify(right.map((x) => [x.v, x.n]));
   if (sig === ledgerSig) return; ledgerSig = sig;
   const f = amtFmt();
-  const card = (x, i, side) => `<div class="lc ${side === "R" ? x.k : i < 3 && x.k !== "others" ? "top" : "rest"}"><div class="lb">${side === "R" ? `<i style="background:${x.col}"></i>` : ""}${esc(x.l)}</div>
+  const card = (x, i, side) => `<div class="lc ${side === "R" ? x.k : i < 3 && x.k !== "others" ? "top" : "rest"}"><div class="lb">${side === "R" ? `<i style="background:${x.col}"></i>` : ""}${esc(x.l).replace(/([a-z])([A-Z])/g, "$1<wbr>$2")}</div>
     <div class="am">${num("lg-" + view + side + x.k, x.v, f)}<small>${tok}</small></div>
     <div class="bar"><i style="background:${side === "R" ? x.col : "linear-gradient(90deg,var(--deep),var(--pink))"}" data-w="${(100 * x.v) / tot}"></i></div>
     <div class="tk">${num("lgp-" + view + side + x.k, (100 * x.v) / tot, "pct0")} of total</div><div class="tk">${fmt(x.n)} tasks</div></div>`;
@@ -438,7 +438,7 @@ function topPosters() {
     <div><div class="tsl">of all rewards on ${VNAME()} came from the <b>top 5 posters</b></div><div class="tss">They also posted ${num("t5n", P.top5TaskShare, "pct0")} of all tasks · ${fmt(P.count)} posting wallets in total</div></div>`;
   const mx = Math.max(...P.top.map((p) => p.reward), 1);
   $("#toptable").innerHTML = `<table class="ptab"><thead><tr><th>#</th><th>Poster</th><th class="r">Tasks</th><th class="r">Rewards</th><th>Share</th></tr></thead><tbody>` +
-    P.top.map((p, i) => `<tr class="${i < 5 ? "t5" : ""}"><td class="mono mut">${i + 1}</td><td><span class="pn">${esc(p.name || short(p.address))}</span><span class="pc">${esc(p.chains.join(" · "))}</span></td><td class="r">${num("tp-n" + i, p.tasks)}</td><td class="r">${num("tp-r" + i, p.reward, f)}</td><td class="sh2"><div class="sb"><i class="gw" data-w="${(100 * p.reward) / mx}"></i></div><span>${fmt(p.share, 1)}%</span></td></tr>`).join("") + `</tbody></table><p class="cap" style="margin:10px 0 0">${esc(VNAME().replace(/^b/, "B"))} · rewards in ${UNIT()} · names are Taskmarket display names</p>`;
+    P.top.map((p, i) => `<tr class="${i < 5 ? "t5" : ""}"><td class="mono mut">${i + 1}</td><td><span class="pn">${esc(p.name || short(p.address))}</span><span class="pc">${esc(p.chains.join(" · "))}</span></td><td class="r">${num("tp-n" + i, p.tasks)}</td><td class="r">${num("tp-r" + i, p.reward, f)}</td><td><div class="sh2"><div class="sb"><i class="gw" data-w="${(100 * p.reward) / mx}"></i></div><span>${fmt(p.share, 1)}%</span></div></td></tr>`).join("") + `</tbody></table><p class="cap" style="margin:10px 0 0">${esc(VNAME().replace(/^b/, "B"))} · rewards in ${UNIT()} · names are Taskmarket display names</p>`;
   whenSeen($("#top"), () => { runNums($("#top")); grow($("#top")); $("#top").querySelectorAll(".fg").forEach((c) => (c.style.strokeDashoffset = c.dataset.off)); });
 }
 function entries() {
@@ -502,9 +502,8 @@ function sbar(key, a, b, f, tip) {
   // Proportional Tempo/Base split bar. A number sits inside its segment when it fits; when a segment is too narrow the
   // number moves to the label row under the bar ("Base 186"). Nothing is ever drawn above the bar.
   const one = view !== "both", parts = one ? [[view, view === "4217" ? a : b]] : [["4217", a], ["8453", b]], tot = parts.reduce((s, p) => s + p[1], 0) || 1;
-  const fits = (x) => one || ((100 * x) / tot >= 22 && String(f(x)).length * 8 + 12 <= ((100 * x) / tot) * 1.6);
-  const seg = parts.map(([c, x]) => `<div class="sg ${c === "4217" ? "t" : "b"}" style="flex:${Math.max(x, tot * 0.04)}">${fits(x) ? `<span>${f(x)}</span>` : ""}</div>`).join("");
-  const lab = parts.map(([c, x]) => `<span>${CH[c]}${one ? " only" : ""}${fits(x) ? "" : ` <b>${f(x)}</b>`}</span>`).join("");
+  const seg = parts.map(([c, x]) => `<div class="sg ${c === "4217" ? "t" : "b"}" style="flex:${Math.max(x, tot * 0.04)} 1 0"><span>${f(x)}</span></div>`).join("");
+  const lab = parts.map(([c]) => `<span>${CH[c]}${one ? " only" : ""}</span>`).join("");
   return `<div class="sbar" ${tip ? `data-tip="${esc(tip)}" tabindex="0"` : ""}><div class="sbt">${seg}</div><div class="sbl${one ? " one" : ""}">${lab}</div></div>`;
 }
 
@@ -516,7 +515,7 @@ const grow2 = () => requestAnimationFrame(() => requestAnimationFrame(() => docu
 function chainBlockA(x) { document.getElementById("small4").className = "small4 cb2";
   const cs = cbChains(x), st = Object.fromEntries(cs.map((c) => [c, cbStat(x, c)]));
   const row = (k, label) => { const tot = cs.reduce((a, c) => a + st[c][k], 0) || 1;
-    return `<div class="cbrow"><div class="cbl">${label}<b>${num("cba" + k + x.view, tot)}</b></div><div class="cbbar">${cs.map((c) => { const pc = (100 * st[c][k]) / tot, ok = cs.length === 1 || pc >= 16; return `<i class="${c === "4217" ? "t" : "b"}" data-w="${Math.max(6, pc)}" title="${CH[c]}: ${fmt(st[c][k])}">${ok ? `${fmt(st[c][k])}<em>${CH[c]} · ${fmt(pc)}%</em>` : ""}</i>`; }).join("")}</div>${cs.some((c) => cs.length > 1 && (100 * st[c][k]) / tot < 16) ? `<div class="cbnote">${cs.map((c) => `<span>${(100 * st[c][k]) / tot < 16 ? `${CH[c]} <b>${fmt(st[c][k])}</b> · ${fmt((100 * st[c][k]) / tot)}%` : ""}</span>`).join("")}</div>` : ""}</div>`; };
+    return `<div class="cbrow"><div class="cbl">${label}<b>${num("cba" + k + x.view, tot)}</b></div><div class="cbbar">${cs.map((c) => { const pc = (100 * st[c][k]) / tot, ok = cs.length === 1 || pc >= 16; return `<i class="${c === "4217" ? "t" : "b"}" data-w="${Math.max(6, pc)}" title="${CH[c]}: ${fmt(st[c][k])}">${fmt(st[c][k])}${ok ? `<em>${CH[c]} · ${fmt(pc)}%</em>` : ""}</i>`; }).join("")}</div></div>`; };
   return row("paid", "Workers ever paid") + row("wallets", "Active wallets") + row("tasks", "Tasks posted · 30d") +
     `<div class="cbfoot"><span>Registered workers (platform-wide) <b style="color:var(--cream)">${num("cbareg", st[cs[0]].reg)}</b></span><span><i class="dot t"></i>Tempo <i class="dot b" style="margin-left:10px"></i>Base</span></div>`; }
 
